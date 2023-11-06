@@ -6,6 +6,9 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <chrono>
+#include <random>
+#include <algorithm>
 
 struct Racer {
     int numParticipants;
@@ -13,22 +16,44 @@ struct Racer {
 };
 
 
+void displayWinners(const std::vector<int> raceRanks) {
+    
+}
+
+
 void doRace(const struct Racer race) {
     std::vector<std::thread> threads;
-    std::vector<int> raceRanks;
+    std::vector<int> raceRanks(race.numParticipants, 0); // Initialize raceRanks with initial values
     std::mutex rankMutex;
 
-    for (size_t raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> raceTime(1, 10); 
+    // Nested for loop to simulate races
+    for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
         std::cout << "Race Number: " << raceNumber << std::endl;
-
-        for (size_t racer = 0; racer <= race.numParticipants; racer++) {
-            threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber]() {
-
+        
+        // Racer goes until < numParticipants
+        for (int racer = 0; racer < race.numParticipants; racer++) {
+            std::cout << "Racer " << racer << ", Rank " << raceRanks[racer] << ", Race Number " << raceNumber << std::endl;
+            threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime]() {
+                int time = raceTime(gen);
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                rankMutex.lock();
+                raceRanks[racer] = time;
+                rankMutex.unlock();
             });
         }
     }
-    
+
+
+
+    // Wait for all threads to finish
+    for (std::thread& thread : threads) {
+        thread.join();
+    }
 }
+
 
 
 
