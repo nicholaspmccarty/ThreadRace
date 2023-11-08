@@ -14,7 +14,7 @@ struct Racer {
 
 // Global Variable race count to keep tracking of how many races
 int raceCount = 0;
-
+int restartNumber = 0;
 /**
  * Displays the winners of a race, sorted by their race times.
  *
@@ -36,7 +36,7 @@ void displayWinners(const std::vector<int>& raceRanks) {
 
 /**
  * Simulates a series of races with multithreading, updating race rankings and displaying winners.
- * @param race The race configuration, including the number of participants and races.
+ * @param race The race configuration, including the number of participants and races. Ensures order ane makes sure it is correct.
  */
 void doRace(const struct Racer race) {
     std::vector<std::thread> threads;
@@ -46,19 +46,26 @@ void doRace(const struct Racer race) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> raceTime(1, 10);
-
+    bool shouldRestart;
     // Simulate races
     for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
         for (int racer = 0; racer < race.numParticipants; racer++) {
-        threads.emplace_back([racer, &raceRanks, &rankMutex, &gen, &raceTime, &race]() { // Capture 'race' by reference
+             if (shouldRestart) {
+                racer = restartNumber;
+                shouldRestart = false;
+
+            }
+            threads.emplace_back([racer, &raceRanks, &rankMutex, &gen, &raceTime, &race, &shouldRestart, raceNumber]() { 
             int time = raceTime(gen);
             std::this_thread::sleep_for(std::chrono::seconds(1));
             std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
             rankMutex.lock();
             if (racer_index > 0 && raceRanks[racer_index] < raceRanks[racer_index - 1]) {
                 raceRanks[racer_index] = raceRanks[racer_index - 1];
+            } else {
+                    shouldRestart = true;
+                    restartNumber = raceNumber;
             }
-            raceRanks[racer_index] += time;
             rankMutex.unlock();
 
             if (racer == (race.numParticipants - 1)) {
