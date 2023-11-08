@@ -1,6 +1,6 @@
 // Nicholas McCarty
 // CSE 381
-// The Big Race
+// The Ordered Race
 
 #include <iostream>
 #include <thread>
@@ -38,7 +38,7 @@ void displayWinners(const std::vector<int> raceRanks) {
     std::iota(sortedRacers.begin(), sortedRacers.end(), 0);
     // Sorting the vector to get the fastest times, keeping index in mind
     std::sort(sortedRacers.begin(), sortedRacers.end(),
-              [&raceRanks](size_t a, size_t b) {
+              [&raceRanks](int a, int b) {
                   return raceRanks[a] < raceRanks[b];
               });
 
@@ -57,9 +57,9 @@ void displayWinners(const std::vector<int> raceRanks) {
  */
 void doRace(const struct Racer race) {
     std::vector<std::thread> threads;
-    std::vector<int> raceRanks(static_cast<std::vector<int>::size_type>(race.numParticipants), 0);
-     // Initialize raceRanks with initial values
+    std::vector<int> raceRanks(race.numParticipants, 0); // Initialize raceRanks with initial values
     std::mutex rankMutex;
+    auto count = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> raceTime(1, 10); 
@@ -70,9 +70,8 @@ void doRace(const struct Racer race) {
             threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime, race]() {
                 int time = raceTime(gen);
                 std::this_thread::sleep_for(std::chrono::seconds(1));
-                std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
                 rankMutex.lock();
-                raceRanks[racer_index] = time;
+                raceRanks[racer] = time;
                 rankMutex.unlock();
                 if (racer == (race.numParticipants-1)) {
                     displayWinners(raceRanks);
