@@ -17,20 +17,23 @@ struct Racer {
     int numRaces;
 };
 
+int raceCount = 0;
+
 void displayWinners(const std::vector<int> raceRanks) {
-    std::unordered_map<int, int> hashMap;
-    std::vector<int> ordered; 
-    
-    for (uint16_t a = 0; a < raceRanks.size(); a++) {
-       hashMap[a] = raceRanks[a];
+    std::vector<int> sortedRacers(raceRanks.size());
+    std::iota(sortedRacers.begin(), sortedRacers.end(), 0);
+
+    std::sort(sortedRacers.begin(), sortedRacers.end(),
+              [&raceRanks](int a, int b) {
+                  return raceRanks[a] < raceRanks[b];
+              });
+
+    std::cout << "Race " << raceCount << ": ";
+    for (int racer : sortedRacers) {
+        std::cout << racer << ", ";
     }
-    for (const auto &j : hashMap) {
-        std::cout << "Index: " << j.first << " Time: " << j.second << std::endl;
-    }
-
-    std::cout << "" << std::endl;
-
-
+    std::cout << std::endl;
+    raceCount++;
 }
 
 
@@ -44,10 +47,9 @@ void doRace(const struct Racer race) {
     std::uniform_int_distribution<int> raceTime(1, 10); 
     // Nested for loop to simulate races
     for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
-        std::cout << "Race Number: " << raceNumber + 1 << std::endl;
+       
         // Racer goes until < numParticipants
         for (int racer = 0; racer < race.numParticipants; racer++) {
-            std::cout << "Racer " << racer << ", Rank " << raceRanks[racer] << ", Race Number " << raceNumber << std::endl;
             threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime, race]() {
                 int time = raceTime(gen);
                 std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -78,6 +80,7 @@ void doRace(const struct Racer race) {
 
 
 int main(int argc, char* argv[]) {
+    raceCount = 0;
     if (argc > 3) {
         std::cerr << "Usage: " << argv[0] << " <number>" << std::endl;
         return 1;
@@ -92,9 +95,5 @@ int main(int argc, char* argv[]) {
     std::cout << "Number of Participants: " << race.numParticipants << std::endl;
     std::cout << "Number of Races: " << race.numRaces << std::endl;
      doRace(race);
-
-
-    
-    
 }
     
