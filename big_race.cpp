@@ -71,9 +71,11 @@ void doRace(const struct Racer race) {
                 int time = raceTime(gen);
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
+                {
                 rankMutex.lock();
                 raceRanks[racer_index] = time;
                 rankMutex.unlock();
+                }
                 if (racer == (race.numParticipants-1)) {
                     displayWinners(raceRanks);
                 }

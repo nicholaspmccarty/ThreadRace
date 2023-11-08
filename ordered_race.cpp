@@ -1,6 +1,6 @@
 // Nicholas McCarty
 // CSE 381
-// The Ordered Race
+// The Big Race
 
 #include <iostream>
 #include <thread>
@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <map>
 #include <bits/stdc++.h> 
-#include <numeric> // Added for iota
+#include <numeric> 
+
+
 
 
 // A structure to represent the number of participants and races in the racing simulation.
@@ -22,6 +24,9 @@ struct Racer {
 
 // Global Variable race count to keep tracking of how many races
 int raceCount = 0;
+bool checkRightSpot(std::vector<int>::size_type racer_index, std::vector<int>& raceRanks, int time);
+int restartNumber;
+Racer temp;
 
 /**
  * Displays the winners of a race, sorted by their race times.
@@ -31,18 +36,10 @@ int raceCount = 0;
  *
  * @param raceRanks A vector of race times for each racer.
  */
-void displayWinners(const std::vector<int> raceRanks) {
-    
-    // Filling the vector with raceRanks.size
+void displayWinners(const std::vector<int>& raceRanks) {
     std::vector<int> sortedRacers(raceRanks.size());
     std::iota(sortedRacers.begin(), sortedRacers.end(), 0);
-    // Sorting the vector to get the fastest times, keeping index in mind
-    std::sort(sortedRacers.begin(), sortedRacers.end(),
-              [&raceRanks](int a, int b) {
-                  return raceRanks[a] < raceRanks[b];
-              });
-
-    std::cout << "Race " << raceCount << ": ";
+     std::cout << "Race " << raceCount << ": ";
     for (const auto &racer : sortedRacers) {
         std::cout << racer << ", ";
     }
@@ -50,44 +47,65 @@ void displayWinners(const std::vector<int> raceRanks) {
     raceCount++;
 }
 
-
 /**
  * Simulates a series of races with multithreading, updating race rankings and displaying winners.
  * @param race The race configuration, including the number of participants and races.
  */
 void doRace(const struct Racer race) {
     std::vector<std::thread> threads;
-    std::vector<int> raceRanks(race.numParticipants, 0); // Initialize raceRanks with initial values
+    std::vector<int> raceRanks(static_cast<std::vector<int>::size_type>(race.numParticipants), 0);
+     // Initialize raceRanks with initial values
     std::mutex rankMutex;
-    auto count = 0;
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> raceTime(1, 10); 
     // Nested for loop to simulate races
     for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
         // Racer goes until < numParticipants
+        bool shouldRestart = false;
+        
         for (int racer = 0; racer < race.numParticipants; racer++) {
-            threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime, race]() {
+            if (shouldRestart) {
+                racer = 0;
+                shouldRestart = false;
+
+            }
+            threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime, race, &shouldRestart]() {
                 int time = raceTime(gen);
                 std::this_thread::sleep_for(std::chrono::seconds(1));
+                std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
+                
                 rankMutex.lock();
-                raceRanks[racer] = time;
+                if (checkRightSpot(racer_index, raceRanks,time)) {
+                    raceRanks[racer_index] = racer_index;
+                } else {
+                    shouldRestart = true;
+                    restartNumber = raceNumber;
+                }
                 rankMutex.unlock();
+                
                 if (racer == (race.numParticipants-1)) {
                     displayWinners(raceRanks);
                 }
             });
         }
     }
-
-
-
     // Wait for all threads to finish
     for (std::thread& thread : threads) {
         thread.join();
     }
 
     
+}
+
+bool checkRightSpot(std::vector<int>::size_type racer_index, std::vector<int>& raceRanks, int time) {
+      
+       for (int j = racer_index; j < raceRanks.size(); j++) {
+        if (time < raceRanks.at(j)) {
+            return true;
+        }
+       }
+       return true;
 }
 
 
