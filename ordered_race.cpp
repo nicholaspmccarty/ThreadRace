@@ -1,7 +1,3 @@
-// Nicholas McCarty
-// CSE 381
-// The Big Race
-
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -9,12 +5,6 @@
 #include <chrono>
 #include <random>
 #include <algorithm>
-#include <map>
-#include <bits/stdc++.h> 
-#include <numeric> 
-
-
-
 
 // A structure to represent the number of participants and races in the racing simulation.
 struct Racer {
@@ -24,9 +14,6 @@ struct Racer {
 
 // Global Variable race count to keep tracking of how many races
 int raceCount = 0;
-bool checkRightSpot(std::vector<int>::size_type racer_index, std::vector<int>& raceRanks, int time);
-int restartNumber;
-Racer temp;
 
 /**
  * Displays the winners of a race, sorted by their race times.
@@ -39,7 +26,7 @@ Racer temp;
 void displayWinners(const std::vector<int>& raceRanks) {
     std::vector<int> sortedRacers(raceRanks.size());
     std::iota(sortedRacers.begin(), sortedRacers.end(), 0);
-     std::cout << "Race " << raceCount << ": ";
+    std::cout << "Race " << raceCount << ": ";
     for (const auto &racer : sortedRacers) {
         std::cout << racer << ", ";
     }
@@ -54,66 +41,38 @@ void displayWinners(const std::vector<int>& raceRanks) {
 void doRace(const struct Racer race) {
     std::vector<std::thread> threads;
     std::vector<int> raceRanks(static_cast<std::vector<int>::size_type>(race.numParticipants), 0);
-     // Initialize raceRanks with initial values
+    // Initialize raceRanks with initial values
     std::mutex rankMutex;
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> raceTime(1, 10); 
-    // Nested for loop to simulate races
-    for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
-        // Racer goes until < numParticipants
-        bool shouldRestart = false;
-        
-        for (int racer = 0; racer < race.numParticipants; racer++) {
-            if (shouldRestart) {
-                racer = 0;
-                shouldRestart = false;
+    std::uniform_int_distribution<int> raceTime(1, 10);
 
+    // Simulate races
+    for (int raceNumber = 0; raceNumber < race.numRaces; raceNumber++) {
+        for (int racer = 0; racer < race.numParticipants; racer++) {
+        threads.emplace_back([racer, &raceRanks, &rankMutex, &gen, &raceTime, &race]() { // Capture 'race' by reference
+            int time = raceTime(gen);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
+            rankMutex.lock();
+            if (racer_index > 0 && raceRanks[racer_index] < raceRanks[racer_index - 1]) {
+                raceRanks[racer_index] = raceRanks[racer_index - 1];
             }
-            threads.emplace_back([racer, &raceRanks, &rankMutex, raceNumber, &gen, &raceTime, race, &shouldRestart]() {
-                int time = raceTime(gen);
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                std::vector<int>::size_type racer_index = static_cast<std::vector<int>::size_type>(racer);
-                
-                rankMutex.lock();
-                if (checkRightSpot(racer_index, raceRanks,time)) {
-                    raceRanks[racer_index] = racer_index;
-                } else {
-                    shouldRestart = true;
-                    restartNumber = raceNumber;
-                }
-                rankMutex.unlock();
-                
-                if (racer == (race.numParticipants-1)) {
-                    displayWinners(raceRanks);
-                }
-            });
-        }
+            raceRanks[racer_index] += time;
+            rankMutex.unlock();
+
+            if (racer == (race.numParticipants - 1)) {
+                displayWinners(raceRanks);
+            }
+        });
     }
+}
     // Wait for all threads to finish
     for (std::thread& thread : threads) {
         thread.join();
     }
-
-    
 }
 
-bool checkRightSpot(std::vector<int>::size_type racer_index, std::vector<int>& raceRanks, int time) {
-      
-       for (int j = racer_index; j < raceRanks.size(); j++) {
-        if (time < raceRanks.at(j)) {
-            return true;
-        }
-       }
-       return true;
-}
-
-
-
-
-
-
-// Main method processes input from the target, and then we do cool things with it.
 int main(int argc, char* argv[]) {
     raceCount = 0;
     if (argc > 3) {
